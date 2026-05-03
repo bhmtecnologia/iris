@@ -1,36 +1,84 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Íris
 
-## Getting Started
+Plataforma de venda automatizada de fotos de eventos com busca por reconhecimento facial. PWA, fricção zero, PIX instantâneo.
 
-First, run the development server:
+## Stack
+
+- **Next.js 15** (App Router, RSC) + TypeScript + Tailwind 4 + PWA
+- **Supabase** (Postgres + pgvector + Auth + Storage)
+- **AWS Rekognition** (Collections + IndexFaces + SearchFacesByImage)
+- **Mercado Pago** (PIX + webhook)
+- **Resend** (e-mail) + **Z-API** (WhatsApp)
+
+## Setup
+
+### 1. Provisionamento (Fase 0)
+
+Crie contas e capture credenciais:
+- AWS (IAM com `rekognition:*` em `us-east-1`)
+- Supabase (URL, anon key, service role)
+- Mercado Pago (Access Token + Webhook Secret)
+- Resend (domínio verificado)
+- Z-API (instance + token + client token)
+
+### 2. Configurar env
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local
+# preencha as chaves
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 3. Banco de dados
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+No SQL Editor do Supabase, rode `supabase/migrations/0001_initial.sql`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Crie os buckets de Storage:
+- `originals` (privado)
+- `watermarked` (público)
 
-## Learn More
+### 4. Rodar localmente
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+pnpm install
+pnpm dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Acesse http://localhost:3000.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Fluxos
 
-## Deploy on Vercel
+- **Fotógrafo:** `/login` → magic link → `/dashboard` → criar evento → upload → ver QR.
+- **Cliente:** escanear QR → `/e/{token}` → consentimento + selfie → `/resultados` → seleção → `/checkout` → PIX → download.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Estrutura
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+src/
+├── app/
+│   ├── page.tsx                          # landing
+│   ├── login/                            # auth fotógrafo
+│   ├── dashboard/                        # portal fotógrafo
+│   ├── e/[qrToken]/                      # jornada cliente
+│   └── api/
+│       ├── upload/{presign,complete}     # upload pipeline
+│       ├── search                        # face match
+│       ├── orders                        # criar pedido + PIX
+│       ├── jobs/process                  # worker (Vercel Cron)
+│       └── webhooks/mercadopago          # liberação automática
+└── lib/
+    ├── rekognition.ts
+    ├── mercadopago.ts
+    ├── watermark.ts
+    ├── notifications/{email,whatsapp}.ts
+    └── supabase/{client,server,admin}.ts
+```
+
+## Cron
+
+Vercel Cron chama `/api/jobs/process` a cada minuto para processar fotos em lote (watermark + IndexFaces).
+
+## Próximos passos
+
+- Sprint 5: rate limiting, hCaptcha, retenção LGPD configurável, Sentry.
+- Testes Playwright E2E.
+- Onboarding de fotógrafos com split de pagamento.
