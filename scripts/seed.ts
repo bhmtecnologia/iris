@@ -46,33 +46,75 @@ async function main() {
     console.log("  ✓ usuário existente");
   }
 
-  // Photographer row.
-  let { data: photographer } = await admin
-    .from("photographers")
-    .select("id")
+  // Organization + member.
+  let { data: membership } = await admin
+    .from("organization_members")
+    .select("organization_id")
     .eq("user_id", user!.id)
+    .limit(1)
     .maybeSingle();
-  if (!photographer) {
-    const ins = await admin
-      .from("photographers")
-      .insert({ user_id: user!.id, name: "Demo Fotógrafo" })
+
+  if (!membership) {
+    const orgIns = await admin
+      .from("organizations")
+      .insert({
+        name: "Demo Studio",
+        slug: `demo-studio-${user!.id.slice(0, 6)}`,
+        type: "company",
+      })
       .select("id")
       .single();
-    photographer = ins.data;
-    console.log("  ✓ photographer row criado");
+    if (orgIns.error) throw orgIns.error;
+    await admin.from("organization_members").insert({
+      organization_id: orgIns.data.id,
+      user_id: user!.id,
+      role: "owner",
+    });
+    membership = { organization_id: orgIns.data.id };
+    console.log("  ✓ organization + membership criados");
   }
 
-  // Event.
-  const eventName = `Corrida da Lapa · Demo ${new Date().toLocaleDateString("pt-BR")}`;
+  // RealWorldEvent (agregador público).
+  const rweName = `Corrida da Lapa ${new Date().getFullYear()}`;
+  const rweSlug = rweName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  let { data: rwe } = await admin
+    .from("real_world_events")
+    .select("id")
+    .eq("slug", rweSlug)
+    .maybeSingle();
+  if (!rwe) {
+    const rweIns = await admin
+      .from("real_world_events")
+      .insert({
+        slug: rweSlug,
+        name: rweName,
+        description: "Corrida de rua amadora · 5km e 10km",
+        date: new Date().toISOString().slice(0, 10),
+        location: "Rio de Janeiro · RJ",
+        public_listing: true,
+        verified_by_iris: true,
+        created_by: user!.id,
+      })
+      .select("id")
+      .single();
+    if (rweIns.error) throw rweIns.error;
+    rwe = rweIns.data;
+    console.log("  ✓ real_world_event criado");
+  }
+
+  // Event (cobertura desta org no RWE).
+  const eventName = `${rweName} · Demo Studio`;
   const { data: event, error: evErr } = await admin
     .from("events")
     .insert({
-      photographer_id: photographer!.id,
+      organization_id: membership.organization_id,
+      real_world_event_id: rwe.id,
       name: eventName,
       location: "Rio de Janeiro · RJ",
       date: new Date().toISOString().slice(0, 10),
       price_cents: 1500,
       status: "active",
+      public_listing: true,
     })
     .select("id, qr_token")
     .single();

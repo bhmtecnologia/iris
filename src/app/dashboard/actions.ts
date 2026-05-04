@@ -24,17 +24,18 @@ export async function createEventAction(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: photographer } = await supabase
-    .from("photographers")
-    .select("id")
+  const { data: membership } = await supabase
+    .from("organization_members")
+    .select("organization_id")
     .eq("user_id", user.id)
-    .single();
-  if (!photographer) throw new Error("Fotógrafo não encontrado");
+    .limit(1)
+    .maybeSingle();
+  if (!membership) throw new Error("Organização não encontrada");
 
   const { data: event, error } = await supabase
     .from("events")
     .insert({
-      photographer_id: photographer.id,
+      organization_id: membership.organization_id,
       name: parsed.name,
       location: parsed.location,
       date: parsed.date,

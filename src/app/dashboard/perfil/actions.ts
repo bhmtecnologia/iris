@@ -22,10 +22,18 @@ export async function saveProfile(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const { data: membership } = await supabase
+    .from("organization_members")
+    .select("organization_id")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+  if (!membership) throw new Error("Organização não encontrada");
+
   const { error } = await supabase
-    .from("photographers")
+    .from("organizations")
     .update(parsed)
-    .eq("user_id", user.id);
+    .eq("id", membership.organization_id);
   if (error) throw error;
 
   revalidatePath("/dashboard/perfil");

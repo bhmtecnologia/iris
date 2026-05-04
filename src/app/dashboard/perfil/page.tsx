@@ -7,11 +7,20 @@ export default async function ProfilePage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: photographer } = await supabase
-    .from("photographers")
-    .select("name, doc, pix_key")
+  const { data: membership } = await supabase
+    .from("organization_members")
+    .select("organization_id, role")
     .eq("user_id", user.id)
+    .limit(1)
     .maybeSingle();
+
+  const { data: organization } = membership
+    ? await supabase
+        .from("organizations")
+        .select("name, doc, pix_key, type")
+        .eq("id", membership.organization_id)
+        .maybeSingle()
+    : { data: null };
 
   return (
     <main className="max-w-xl mx-auto px-6 py-10">
@@ -21,9 +30,9 @@ export default async function ProfilePage() {
       </p>
 
       <form action={saveProfile} className="mt-8 space-y-4">
-        <Field label="Nome do estúdio / fotógrafo" name="name" defaultValue={photographer?.name ?? ""} required />
-        <Field label="CPF / CNPJ" name="doc" defaultValue={photographer?.doc ?? ""} placeholder="000.000.000-00" />
-        <Field label="Chave PIX" name="pix_key" defaultValue={photographer?.pix_key ?? ""} placeholder="email, CPF, telefone ou chave aleatória" />
+        <Field label="Nome do estúdio / empresa" name="name" defaultValue={organization?.name ?? ""} required />
+        <Field label="CPF / CNPJ" name="doc" defaultValue={organization?.doc ?? ""} placeholder="000.000.000-00" />
+        <Field label="Chave PIX" name="pix_key" defaultValue={organization?.pix_key ?? ""} placeholder="email, CPF, telefone ou chave aleatória" />
         <Field label="Email da conta" defaultValue={user.email ?? ""} disabled />
 
         <button className="mt-2 px-4 py-2 rounded-md bg-[var(--foreground)] text-[var(--background)] font-medium">

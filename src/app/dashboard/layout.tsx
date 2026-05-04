@@ -8,21 +8,32 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Lazily ensure photographer row exists.
-  const { data: photographer } = await supabase
-    .from("photographers")
-    .select("id, name")
+  // Lazily ensure the user belongs to at least one organization (an "individual" org by default).
+  const { data: membership } = await supabase
+    .from("organization_members")
+    .select("organization_id")
     .eq("user_id", user.id)
+    .limit(1)
     .maybeSingle();
 
-  if (!photographer) {
+  if (!membership) {
     const md = user.user_metadata ?? {};
     const name =
       (typeof md.full_name === "string" && md.full_name) ||
       (typeof md.name === "string" && md.name) ||
       user.email?.split("@")[0] ||
       "Fotógrafo";
-    await supabase.from("photographers").insert({ user_id: user.id, name });
+    const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${user.id.slice(0, 6)}`;
+    const { data: org } = await supabase
+      .from("organizations")
+      .insert({ name, slug, type: "individual" })
+      .select("id")
+      .single();
+    if (org) {
+      await supabase
+        .from("organization_members")
+        .insert({ organization_id: org.id, user_id: user.id, role: "owner" });
+    }
   }
 
   return (
