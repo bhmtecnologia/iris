@@ -185,7 +185,13 @@ async function ensureOrg(p: Photographer, userId: string) {
   if (!org) {
     const ins = await admin
       .from("organizations")
-      .insert({ name: p.orgName, slug: p.orgSlug, type: p.orgType })
+      .insert({
+        name: p.orgName,
+        slug: p.orgSlug,
+        type: p.orgType,
+        pix_key: p.email,
+        onboarded_at: new Date().toISOString(),
+      })
       .select("id")
       .single();
     if (ins.error) throw ins.error;

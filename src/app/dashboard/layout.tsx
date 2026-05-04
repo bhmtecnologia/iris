@@ -9,7 +9,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!user) redirect("/login");
 
   // Lazily ensure the user belongs to at least one organization (an "individual" org by default).
-  const { data: membership } = await supabase
+  let { data: membership } = await supabase
     .from("organization_members")
     .select("organization_id")
     .eq("user_id", user.id)
@@ -33,6 +33,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
       await supabase
         .from("organization_members")
         .insert({ organization_id: org.id, user_id: user.id, role: "owner" });
+      membership = { organization_id: org.id };
+    }
+  }
+
+  // Redireciona pro wizard enquanto não completou (exceto já estando lá).
+  if (membership) {
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("onboarded_at")
+      .eq("id", membership.organization_id)
+      .maybeSingle();
+    if (org && !org.onboarded_at) {
+      redirect("/onboarding");
     }
   }
 
