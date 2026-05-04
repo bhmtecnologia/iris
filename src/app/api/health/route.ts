@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
+import { APP_BUILD_TAG, APP_VERSION } from "@/lib/version";
 
 export async function GET() {
   const checks: Record<string, "ok" | "fail"> = {};
@@ -15,7 +16,13 @@ export async function GET() {
 
   const ok = Object.values(checks).every((v) => v === "ok");
   return NextResponse.json(
-    { ok, checks, ts: new Date().toISOString() },
+    {
+      ok,
+      version: APP_VERSION,
+      build: APP_BUILD_TAG,
+      checks,
+      ts: new Date().toISOString(),
+    },
     { status: ok ? 200 : 503 }
   );
 }

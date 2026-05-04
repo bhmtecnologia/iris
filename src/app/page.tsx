@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { APP_BUILD_TAG } from "@/lib/version";
 
 export default function Home() {
   return (
@@ -30,8 +31,9 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="px-6 py-6 border-t border-[var(--border)] text-xs text-[var(--muted)] flex justify-between">
+      <footer className="px-6 py-6 border-t border-[var(--border)] text-xs text-[var(--muted)] flex justify-between items-center gap-4">
         <span>Íris · {new Date().getFullYear()}</span>
+        <span className="font-mono text-[10px] opacity-60">v{APP_BUILD_TAG}</span>
         <Link href="/privacidade">Privacidade · LGPD</Link>
       </footer>
     </main>

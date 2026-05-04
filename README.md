@@ -1,4 +1,4 @@
-# Íris
+# Íris [v0.2.0]
 
 > Suas memórias te encontram.
 
@@ -399,24 +399,26 @@ Duas opções:
 
 ## Pagamento PIX
 
-Usa Mercado Pago **Checkout Transparente + API de Pagamentos** (não Bricks, não Pro).
+Usa Mercado Pago **Checkout Transparente + API `/v1/orders`** (a nova, **não** a `/v1/payments` legacy — essa rejeita test sellers).
 
 ### Em desenvolvimento
 
-Stub auto-aprova em 8 segundos sem custo nenhum.
+Stub auto-aprova em 8 segundos sem custo nenhum. Smoke test: `pnpm mp:smoke`.
 
-### Em produção
+### Em produção / sandbox real
 
-1. Conta Mercado Pago com **PIX habilitado** (chave PIX cadastrada).
-   - Verifique: `curl "https://api.mercadopago.com/v1/payment_methods?access_token=$TOKEN" | grep '"id":"pix"'` → tem que retornar.
-2. Application criada em https://www.mercadopago.com.br/developers/panel/app
-3. Pega `Access Token` (TEST ou APP_USR para produção) → `MERCADO_PAGO_ACCESS_TOKEN`.
-4. Configura webhook na app:
-   - URL: `https://seu-dominio.com/api/webhooks/mercadopago`
-   - Eventos: **Pagamentos**
-   - Pega o `Webhook Secret` → `MERCADO_PAGO_WEBHOOK_SECRET`.
+Documentação completa em [docs/mercado-pago.md](docs/mercado-pago.md). Resumo:
 
-O webhook valida assinatura HMAC (`x-signature` + `x-request-id`) automaticamente quando o secret está setado.
+1. Conta Mercado Pago com **PIX habilitado** (chave PIX cadastrada em https://www.mercadopago.com.br/pix/manage-keys)
+2. Application criada em https://www.mercadopago.com.br/developers/panel/app — Checkout Transparente + API de Pagamentos
+3. Para sandbox real, criar **test users** via API (a conta normal não consegue receber em sandbox sem KYC completo) — ver [docs/mercado-pago.md](docs/mercado-pago.md#test-users--o-caminho-oficial-pra-sandbox)
+4. Em sandbox, payer email **deve** terminar em `@testuser.com` (auto-aplicado em `lib/mercadopago.ts`)
+5. Webhook precisa de URL pública HTTPS — em dev, use o stub; em prod, configure no painel
+
+Para verificar a qualquer momento:
+```bash
+pnpm mp:smoke   # checa /users/me, payment_methods, e tenta criar PIX real
+```
 
 ---
 
