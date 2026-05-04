@@ -6,12 +6,14 @@ export default function Home() {
     <main className="flex-1 flex flex-col">
       <header className="px-6 py-5 flex items-center justify-between border-b border-[var(--border)]">
         <span className="font-semibold tracking-tight text-lg">Íris</span>
-        <Link
-          href="/login"
-          className="text-sm text-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
-        >
-          Sou fotógrafo →
-        </Link>
+        <nav className="flex items-center gap-6 text-sm">
+          <Link href="/eventos" className="text-[var(--muted)] hover:text-[var(--foreground)]">
+            Buscar evento
+          </Link>
+          <Link href="/login" className="text-[var(--muted)] hover:text-[var(--foreground)]">
+            Sou fotógrafo →
+          </Link>
+        </nav>
       </header>
 
       <section className="flex-1 flex items-center justify-center px-6 py-24">
@@ -25,8 +27,16 @@ export default function Home() {
             Sem buscar entre milhares de fotos. Tire uma selfie no evento,
             reconheça seu rosto, pague no PIX e receba em segundos.
           </p>
-          <div className="mt-10 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-            Aponte a câmera no QR Code do seu evento
+          <div className="mt-10 flex flex-col items-center gap-3">
+            <Link
+              href="/eventos"
+              className="px-6 py-3 rounded-lg bg-[var(--foreground)] text-[var(--background)] font-medium"
+            >
+              Buscar evento
+            </Link>
+            <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+              ou aponte a câmera no QR Code do evento
+            </div>
           </div>
         </div>
       </section>
