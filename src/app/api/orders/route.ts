@@ -58,6 +58,7 @@ export async function POST(req: Request) {
       event_id: body.eventId,
       photo_ids: body.photoIds,
       total_cents: total,
+      search_id: search.id, // bind para gating do /status
     })
     .select("id")
     .single();

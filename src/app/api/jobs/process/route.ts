@@ -38,19 +38,17 @@ export async function POST(req: Request) {
 }
 
 async function processQueue() {
-
   const admin = createAdminClient();
-  const { data: jobs } = await admin
-    .from("jobs")
-    .select("id, payload, attempts")
-    .eq("type", "process_photo")
-    .eq("status", "queued")
-    .lte("run_after", new Date().toISOString())
-    .limit(5);
+  // Atomic SKIP LOCKED claim — múltiplas invocações concorrentes do Vercel Cron
+  // não pegam o mesmo job (evita pagar Rekognition em dobro).
+  const { data: jobs, error: claimErr } = await admin.rpc("claim_photo_jobs", { p_limit: 5 });
+  if (claimErr) {
+    logger.error("job.claim_failed", claimErr);
+    return NextResponse.json({ error: "claim_failed" }, { status: 500 });
+  }
 
   const results: { id: string; ok: boolean; error?: string }[] = [];
-  for (const job of jobs ?? []) {
-    await admin.from("jobs").update({ status: "running" }).eq("id", job.id);
+  for (const job of (jobs ?? []) as { id: string; payload: unknown; attempts: number }[]) {
     try {
       await processPhoto(job.payload as { photoId: string; eventId: string; path: string });
       await admin.from("jobs").update({ status: "done" }).eq("id", job.id);
@@ -58,13 +56,10 @@ async function processQueue() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       logger.error("job.process_photo_failed", err, { jobId: job.id, payload: job.payload });
+      // attempts já incrementado pela função claim_photo_jobs
       await admin
         .from("jobs")
-        .update({
-          status: "failed",
-          error: msg,
-          attempts: (job.attempts ?? 0) + 1,
-        })
+        .update({ status: "failed", error: msg })
         .eq("id", job.id);
       results.push({ id: job.id, ok: false, error: msg });
     }

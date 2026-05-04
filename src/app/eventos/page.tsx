@@ -19,7 +19,7 @@ export default async function EventosListPage({
     .select(
       `id, slug, name, date, location, cover_photo_url, verified_by_iris,
        events:events!real_world_event_id (id, price_cents, public_listing, status,
-         photos:photos!event_id (id))`
+         photos:photos!event_id (id, watermarked_path, processed_at))`
     )
     .eq("public_listing", true)
     .order("verified_by_iris", { ascending: false })
@@ -47,13 +47,14 @@ export default async function EventosListPage({
 
     let cover = rwe.cover_photo_url;
     if (!cover) {
-      // fallback: pega 1ª foto da 1ª cobertura
-      const firstCoverage = activeCoverages[0];
-      const firstPhoto = firstCoverage?.photos?.[0];
-      if (firstPhoto) {
-        cover = admin.storage.from("watermarked").getPublicUrl(
-          `wm/${firstCoverage.id}/seed-0.jpg`
-        ).data.publicUrl;
+      // fallback: 1ª foto processada da 1ª cobertura, usando o watermarked_path real
+      const firstProcessed = activeCoverages
+        .flatMap((e) => e.photos ?? [])
+        .find((p) => p.watermarked_path && p.processed_at);
+      if (firstProcessed?.watermarked_path) {
+        cover = admin.storage
+          .from("watermarked")
+          .getPublicUrl(firstProcessed.watermarked_path).data.publicUrl;
       }
     }
 

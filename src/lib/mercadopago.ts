@@ -144,7 +144,13 @@ export function isApproved(order: OrderResource): boolean {
  * Validates MP webhook signature (formato legacy + novo).
  * Header: x-signature: ts=...,v1=...
  * Manifest: id:<dataId>;request-id:<requestId>;ts:<ts>;
+ *
+ * Inclui:
+ *  - ts freshness (anti-replay; janela de 5min)
+ *  - length-safe HMAC compare (não joga se v1 vier curto)
  */
+const WEBHOOK_TS_WINDOW_MS = 5 * 60 * 1000;
+
 export function verifyWebhookSignature(params: {
   signatureHeader: string | null;
   requestIdHeader: string | null;
@@ -161,7 +167,17 @@ export function verifyWebhookSignature(params: {
   const v1 = parts.v1;
   if (!ts || !v1) return false;
 
+  // ts freshness — MP envia em milissegundos
+  const tsNum = Number(ts);
+  if (!Number.isFinite(tsNum)) return false;
+  if (Math.abs(Date.now() - tsNum) > WEBHOOK_TS_WINDOW_MS) return false;
+
   const manifest = `id:${dataId};request-id:${requestIdHeader};ts:${ts};`;
   const expected = crypto.createHmac("sha256", secret).update(manifest).digest("hex");
-  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(v1));
+
+  // length-check antes do timingSafeEqual (evita throw em buffers de tamanho diferente)
+  const expectedBuf = Buffer.from(expected, "utf8");
+  const v1Buf = Buffer.from(v1, "utf8");
+  if (expectedBuf.length !== v1Buf.length) return false;
+  return crypto.timingSafeEqual(expectedBuf, v1Buf);
 }

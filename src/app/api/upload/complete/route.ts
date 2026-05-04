@@ -15,6 +15,12 @@ export async function POST(req: Request) {
 
   const body = schema.parse(await req.json());
 
+  // Bloqueia cross-tenant theft: o path tem que estar no namespace deste evento.
+  // (presign sempre escreve em `${eventId}/...`)
+  if (!body.path.startsWith(`${body.eventId}/`) || body.path.includes("..")) {
+    return NextResponse.json({ error: "invalid_path" }, { status: 400 });
+  }
+
   const { data: event } = await supabase.from("events").select("id").eq("id", body.eventId).maybeSingle();
   if (!event) return NextResponse.json({ error: "not_found" }, { status: 404 });
 

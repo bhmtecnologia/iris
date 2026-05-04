@@ -9,8 +9,18 @@ export async function POST(req: Request) {
   const url = new URL(req.url);
   const dataId = url.searchParams.get("data.id") ?? url.searchParams.get("id");
 
+  // Em produção, secret é OBRIGATÓRIO — fail-closed.
+  // Em dev, permite ausência (útil pra stub local que dispara webhook fake).
   const secret = process.env.MERCADO_PAGO_WEBHOOK_SECRET;
-  if (secret) {
+  const isStubCall = req.headers.get("x-stub-mp") === "1";
+  const isProduction = process.env.NODE_ENV === "production";
+
+  if (!secret && isProduction) {
+    logger.error("mp_webhook.secret_missing_in_production", null, {});
+    return NextResponse.json({ error: "server_misconfigured" }, { status: 500 });
+  }
+
+  if (secret && !isStubCall) {
     const valid = verifyWebhookSignature({
       signatureHeader: req.headers.get("x-signature"),
       requestIdHeader: req.headers.get("x-request-id"),
@@ -64,11 +74,13 @@ export async function POST(req: Request) {
         .select("original_path")
         .in("id", order.photo_ids);
 
+      // 24h TTL pra signed URLs entregues por email/WhatsApp.
+      // Era 7d, reduzido pra limitar exposição se a mensagem vazar.
       const links = await Promise.all(
         (photos ?? []).map(async (p) => {
           const { data } = await admin.storage
             .from("originals")
-            .createSignedUrl(p.original_path, 60 * 60 * 24 * 7);
+            .createSignedUrl(p.original_path, 60 * 60 * 24);
           return data?.signedUrl;
         })
       );

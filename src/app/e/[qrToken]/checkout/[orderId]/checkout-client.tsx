@@ -11,7 +11,7 @@ type Order = {
   mp_qr_code_base64: string | null;
 };
 
-export function CheckoutClient({ order }: { order: Order }) {
+export function CheckoutClient({ order, searchId }: { order: Order; searchId: string }) {
   const [status, setStatus] = useState(order.status);
   const [downloads, setDownloads] = useState<string[] | null>(null);
   const [copied, setCopied] = useState(false);
@@ -19,14 +19,14 @@ export function CheckoutClient({ order }: { order: Order }) {
   useEffect(() => {
     if (status === "paid") return;
     const t = setInterval(async () => {
-      const res = await fetch(`/api/orders/${order.id}/status`);
+      const res = await fetch(`/api/orders/${order.id}/status?s=${encodeURIComponent(searchId)}`);
       if (!res.ok) return;
       const data = (await res.json()) as { status: string; downloads?: string[] };
       setStatus(data.status);
       if (data.downloads) setDownloads(data.downloads);
     }, 3000);
     return () => clearInterval(t);
-  }, [order.id, status]);
+  }, [order.id, searchId, status]);
 
   if (status === "paid" && downloads) {
     return (

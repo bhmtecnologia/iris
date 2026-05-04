@@ -52,7 +52,7 @@ export function ResultsGrid({
     setLoading(false);
     if (!res.ok) return;
     const { orderId } = await res.json();
-    router.push(`/e/${qrToken}/checkout/${orderId}`);
+    router.push(`/e/${qrToken}/checkout/${orderId}?s=${encodeURIComponent(searchId)}`);
   }
 
   return (
