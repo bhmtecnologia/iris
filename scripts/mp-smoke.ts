@@ -46,9 +46,9 @@ async function main() {
   console.log(`  ${hasPix ? "✓" : "✗"} PIX disponível`);
   console.log(`  ${cards.length ? "✓" : "✗"} Cartões: ${cards.join(", ") || "—"}`);
 
-  // 3. Tenta criar um PIX
-  console.log("\n→ POST /v1/payments (PIX R$ 1,00)");
-  const r = await fetch("https://api.mercadopago.com/v1/payments", {
+  // 3. Tenta criar um PIX (nova API /v1/orders)
+  console.log("\n→ POST /v1/orders (PIX R$ 1,00)");
+  const r = await fetch("https://api.mercadopago.com/v1/orders", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -56,11 +56,15 @@ async function main() {
       "X-Idempotency-Key": crypto.randomUUID(),
     },
     body: JSON.stringify({
-      transaction_amount: 1.0,
+      type: "online",
+      total_amount: "1.00",
+      external_reference: `smoke_${Date.now()}`,
       description: "Iris smoke",
-      payment_method_id: "pix",
+      transactions: {
+        payments: [{ amount: "1.00", payment_method: { id: "pix", type: "bank_transfer" } }],
+      },
       payer: {
-        email: "smoke@iris.test",
+        email: `buyer_smoke_${Date.now()}@testuser.com`,
         first_name: "Smoke",
         last_name: "Test",
         identification: { type: "CPF", number: "19119119100" },
@@ -69,8 +73,8 @@ async function main() {
   });
   const body = await r.json();
   if (r.ok && body.id) {
-    console.log(`  ✅ PIX criado! payment_id=${body.id}, status=${body.status}`);
-    const qr = body.point_of_interaction?.transaction_data?.qr_code;
+    console.log(`  ✅ Order criada! id=${body.id}, status=${body.status}`);
+    const qr = body.transactions?.payments?.[0]?.payment_method?.qr_code;
     if (qr) console.log(`  qr_code: ${qr.slice(0, 60)}…`);
     console.log("\n🎉 MP totalmente funcional. Pode trocar `dev-placeholder` no .env.local.");
   } else {

@@ -75,7 +75,7 @@ export async function POST(req: Request) {
   await admin
     .from("orders")
     .update({
-      mp_payment_id: String(pix.id),
+      mp_payment_id: pix.id,
       mp_qr_code: pix.qrCode,
       mp_qr_code_base64: pix.qrCodeBase64,
     })

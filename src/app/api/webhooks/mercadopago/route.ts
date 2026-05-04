@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getPayment, verifyWebhookSignature } from "@/lib/mercadopago";
+import { getPayment, isApproved, verifyWebhookSignature } from "@/lib/mercadopago";
 import { sendDownloadEmail } from "@/lib/notifications/email";
 import { sendDownloadWhatsApp } from "@/lib/notifications/whatsapp";
 import { logger } from "@/lib/logger";
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
 
   if (!dataId) return NextResponse.json({ ok: true });
 
-  const payment = await getPayment(Number(dataId));
+  const payment = await getPayment(dataId);
   if (!payment.external_reference) return NextResponse.json({ ok: true });
 
   const admin = createAdminClient();
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     orderId: payment.external_reference,
   });
 
-  if (payment.status === "approved") {
+  if (isApproved(payment)) {
     const { data: order } = await admin
       .from("orders")
       .update({ status: "paid", paid_at: new Date().toISOString() })
